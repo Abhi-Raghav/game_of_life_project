@@ -1,10 +1,12 @@
 import numpy as np
+from rich.console import Console
 
 
 class CoreGameEngine:
-    def __init__(self, grid_size=[500, 500]):
+    def __init__(self, grid_size=(10, 10)):
         self.__grid_size = np.array(grid_size, dtype=int)
-        self.__current_grid = np.zeros(self.__grid_size)
+        self.__current_grid = np.random.randint(2, size=grid_size)
+        # self.__current_grid = np.zeros(self.__grid_size)
         self.__iter = 0
 
     def __update_cell(self, row, col):
@@ -47,9 +49,30 @@ class CoreGameEngine:
     def update_grid(self):
         new_grid = self.__current_grid.copy()
         row, col = np.shape(new_grid)
-        for i in row:
-            for j in col:
+        for i in range(row):
+            for j in range(col):
                 new_grid[i][j] = self.__update_cell(row, col)
+
+    def print_grid(self):
+        console = Console()
+        for row in self.__current_grid:
+            for col in row:
+                if col == 1:  # alive
+                    console.print(":white_medium_square:", end=" ")
+                else:   # dead
+                    console.print(":black_medium_square:", end=" ")
+            console.print()
+
+    def animate(self, no_of_frames=500):
+        pass
+
+
+if __name__ == "__main__":
+    new_game = CoreGameEngine()
+    new_game.print_grid()
+    new_game.update_grid()
+    print()
+    new_game.print_grid()
 
 
 
