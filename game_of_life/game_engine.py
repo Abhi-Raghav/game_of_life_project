@@ -32,7 +32,7 @@ class CoreGameEngine:
 
         max_row, max_col = np.shape(self.__current_grid)
         if row == max_row - 1 or row == 0 or col == max_col - 1 or col == 0:
-            return 0
+            return 0    # cells at the edge of the grid die
         else:
             value_sum_neighbours = self.__current_grid[row+1][col-1] + self.__current_grid[row+1][col] + \
                                    self.__current_grid[row+1][col+1] + self.__current_grid[row][col-1] + \

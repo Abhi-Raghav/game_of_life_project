@@ -1,5 +1,5 @@
 import numpy as np
-from game import CoreGameEngine
+from game_engine import CoreGameEngine
 
 
 if __name__ == "__main__":
