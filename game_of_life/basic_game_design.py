@@ -17,6 +17,10 @@ QUIT,
 # Initialize pygame
 pygame.init()
 
+# Defining constants for screen width and height
+SCREEN_WIDTH = 800
+SCREEN_HEIGHT = 600
+
 # Define a Player object by extending pygame.sprite.Sprite
 # The surface drawn on the screen is now an attribute of Player
 class Player(pygame.sprite.Sprite):
@@ -62,7 +66,7 @@ class Enemy(pygame.sprite.Sprite):
         # and somewhere between the top and bottom edges.
         self.rect = self.surf.get_rect(
             center=(
-                random.randint(SCREEN_WIDTH + 20, SCREEN_HEIGHT + 100),
+                random.randint(SCREEN_WIDTH + 20, SCREEN_WIDTH + 100),
                 random.randint(0, SCREEN_HEIGHT),
             )
         )
@@ -75,16 +79,36 @@ class Enemy(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
 
-# Defining constants for screen width and height
-SCREEN_WIDTH = 800
-SCREEN_HEIGHT = 600
 
 # This returns a Surface which represents the inside dimensions of the window. This is the portion of the window you
 # can control, while the OS controls the window borders and title bar.
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
+# Create a custom event for adding a new enemy
+ADDENEMY = pygame.USEREVENT + 1
+pygame.time.set_timer(ADDENEMY, 250)
+# pygame defines events internally as integers, so you need to define a new event with a unique integer. The last
+# event pygame reserves is called USEREVENT, so defining ADDENEMY = pygame.USEREVENT + 1 on line 83 ensures it’s
+# unique.
+#
+# Next, you need to insert this new event into the event queue at regular intervals throughout the game. That’s where
+# the time module comes in. Line 84 fires the new ADDENEMY event every 250 milliseconds, or four times per second.
+# You call .set_timer() outside the game loop since you only need one timer, but it will fire throughout the entire
+# game.
+
+
 # Instantiate Player. Right not it is a rectangle
 player = Player()
+
+# Create groups to hold enemy sprites and all sprites
+# - enemies is used for collision detection and position updates
+# - all_sprites is used for rendering
+enemies = pygame.sprite.Group()
+all_sprites = pygame.sprite.Group()
+all_sprites.add(player)
+
+# When you call .kill(), the Sprite is removed from every Group to which it belongs. This removes the references to
+# the Sprite as well, which allows Python’s garbage collector to reclaim the memory as necessary.
 
 # You access the list of all active events in the queue by calling pygame.event.get().
 # Variable to keep the main loop running
@@ -104,6 +128,13 @@ while running:
         elif event.type == QUIT:
             running = False
 
+        # Add a new enemy?
+        elif event.type == ADDENEMY:
+            # Create the new enemy and add it to sprite groups
+            new_enemy = Enemy()
+            enemies.add(new_enemy)
+            all_sprites.add(new_enemy)
+
     # pygame also provides pygame.event.get_pressed(), which returns a dictionary containing all the current KEYDOWN
     # events in the queue.
     pressed_keys = pygame.key.get_pressed()
@@ -111,10 +142,14 @@ while running:
     # Update the player sprite based on keypress
     player.update(pressed_keys)
 
+    # Update enemy position
+    enemies.update()
+
 
     # Fill the screen with white
     # screen.fill((255, 255, 255))
     screen.fill((0, 0, 0))
+
 
     # Create a surface and pass a tuple with its length and width
     # surf = pygame.Surface((50, 50))
@@ -150,8 +185,12 @@ while running:
 
     # Draw the player on the screen
     # screen.blit(player.surf, (SCREEN_WIDTH/2, SCREEN_HEIGHT/2))
-    screen.blit(player.surf, player.rect)   # When you pass a Rect to .blit(), it uses the coordinates of the top left
+    # screen.blit(player.surf, player.rect)   # When you pass a Rect to .blit(), it uses the coordinates of the top left
     # corner to draw the surface. You’ll use this later to make your player move!
+
+    # Draw all sprites
+    for entity in all_sprites:
+        screen.blit(entity.surf, entity.rect)
 
     pygame.display.flip()
     # call to pygame.display.flip() after the call to blit(). This updates the entire screen with everything that’s
