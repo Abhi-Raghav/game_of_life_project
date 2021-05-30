@@ -5,6 +5,7 @@ import random
 # Import pygame.locals for easier access to coordinates
 # Updated to conform to flak8 and black standard
 from pygame.locals import (
+RLEACCEL,
 K_UP,
 K_DOWN,
 K_LEFT,
@@ -27,7 +28,18 @@ class Player(pygame.sprite.Sprite):
     def __init__(self):
         super(Player, self).__init__()
         self.surf = pygame.Surface((75, 25))
-        self.surf.fill((255, 255, 255))
+        # self.surf.fill((255, 255, 255))
+
+        # Let’s unpack line 31 a bit. pygame.image.load() loads an image from the disk. You pass it a path to the
+        # file. It returns a Surface, and the .convert() call optimizes the Surface, making future .blit() calls
+        # faster.
+        #
+        # Line 32 uses .set_colorkey() to indicate the color pygame will render as transparent. In this case,
+        # you choose white, because that’s the background color of the jet image. The RLEACCEL constant is an
+        # optional parameter that helps pygame render more quickly on non-accelerated displays. This is added to the
+        # pygame.locals import statement on line 11.
+        self.surf = pygame.image.load("jet.png").convert()
+        self.surf.set_colorkey((0, 0, 0), RLEACCEL)
         self.rect = self.surf.get_rect()
 
     # Next, you write a method in Player to accepts that dictionary. This will define the behavior of the sprite
@@ -59,8 +71,10 @@ class Player(pygame.sprite.Sprite):
 class Enemy(pygame.sprite.Sprite):
     def __init__(self):
         super(Enemy, self).__init__()
-        self.surf = pygame.Surface((20, 10))
-        self.surf.fill((255, 255, 255))
+        # self.surf = pygame.Surface((20, 10))
+        # self.surf.fill((255, 255, 255))
+        self.surf = pygame.image.load("missile.png").convert()
+        self.surf.set_colorkey((255, 255, 255), RLEACCEL)
         # you update rect to be a random location along the right edge of the screen. The center of the rectangle is
         # just off the screen. It’s located at some position between 20 and 100 pixels away from the right edge,
         # and somewhere between the top and bottom edges.
@@ -79,6 +93,26 @@ class Enemy(pygame.sprite.Sprite):
         if self.rect.right < 0:
             self.kill()
 
+class Cloud(pygame.sprite.Sprite):
+    def __init__(self):
+        super(Cloud, self).__init__()
+        self.surf = pygame.image.load("cloud.png").convert()
+        self.surf.set_colorkey((0, 0, 0), RLEACCEL)
+        # The starting position is randomly generated
+        self.rect = self.surf.get_rect(
+            center=(
+                random.randint(SCREEN_WIDTH + 20, SCREEN_WIDTH + 100),
+                random.randint(0, SCREEN_HEIGHT),
+            )
+        )
+
+        # Move the cloud at constant speed
+        # Remove the cloud when it passes the left edge of the screen
+    def update(self):
+        self.rect.move_ip(-5, 0)
+        if self.rect.right < 0:
+            self.kill()
+
 
 # This returns a Surface which represents the inside dimensions of the window. This is the portion of the window you
 # can control, while the OS controls the window borders and title bar.
@@ -87,6 +121,8 @@ screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 # Create a custom event for adding a new enemy
 ADDENEMY = pygame.USEREVENT + 1
 pygame.time.set_timer(ADDENEMY, 250)
+ADDCLOUD = pygame.USEREVENT + 2
+pygame.time.set_timer(ADDCLOUD, 1000)
 # pygame defines events internally as integers, so you need to define a new event with a unique integer. The last
 # event pygame reserves is called USEREVENT, so defining ADDENEMY = pygame.USEREVENT + 1 on line 83 ensures it’s
 # unique.
@@ -104,6 +140,7 @@ player = Player()
 # - enemies is used for collision detection and position updates
 # - all_sprites is used for rendering
 enemies = pygame.sprite.Group()
+clouds = pygame.sprite.Group()
 all_sprites = pygame.sprite.Group()
 all_sprites.add(player)
 
@@ -135,6 +172,12 @@ while running:
             enemies.add(new_enemy)
             all_sprites.add(new_enemy)
 
+        # Add a new cloud?
+        elif event.type == ADDCLOUD:
+            new_cloud = Cloud()
+            clouds.add(new_cloud)
+            all_sprites.add(new_cloud)
+
     # pygame also provides pygame.event.get_pressed(), which returns a dictionary containing all the current KEYDOWN
     # events in the queue.
     pressed_keys = pygame.key.get_pressed()
@@ -144,11 +187,19 @@ while running:
 
     # Update enemy position
     enemies.update()
+    clouds.update()
+
+    # Note that each new Cloud and Enemy are added to all_sprites as well as clouds and enemies. This is done because
+    # each group is used for a separate purpose:
+    #
+    # Rendering is done using all_sprites. Position updates are done using clouds and enemies. Collision detection is
+    # done using enemies. You create multiple groups so that you can change the way sprites move or behave without
+    # impacting the movement or behavior of other sprites.
 
 
     # Fill the screen with white
     # screen.fill((255, 255, 255))
-    screen.fill((0, 0, 0))
+    screen.fill((135, 206, 250))
 
 
     # Create a surface and pass a tuple with its length and width
@@ -191,6 +242,13 @@ while running:
     # Draw all sprites
     for entity in all_sprites:
         screen.blit(entity.surf, entity.rect)
+
+    # Check if any collision has occurred
+    if pygame.sprite.spritecollideany(player, enemies):
+        player.kill()
+        running = False
+
+
 
     pygame.display.flip()
     # call to pygame.display.flip() after the call to blit(). This updates the entire screen with everything that’s
